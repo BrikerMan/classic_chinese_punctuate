@@ -16,7 +16,7 @@ import json
 import h5py
 import numpy as np
 import tqdm
-from typing import List
+from typing import List, Dict
 from keras.preprocessing import sequence
 from utils.embedding import Word2Vec
 from utils.macros import PAD, BOS, EOS, UNK, NO_TAG
@@ -148,7 +148,7 @@ class Tokenizer(object):
                 text = text[1:]
         return text
 
-    def label_tokenize(self, labels, padding=True) -> int:
+    def label_tokenize(self, labels, padding=True) -> List[int]:
         tokens = []
         for char in labels:
             tokens.append(self.labels2idx[char])
@@ -159,7 +159,7 @@ class Tokenizer(object):
     def label_de_tokenize(self,
                           tokens: List[int],
                           remove_padding: bool=True,
-                          length: int=None) -> str:
+                          length: int=None) -> List[str]:
         text = []
         if length:
             tokens = tokens[:length+2]
@@ -169,9 +169,12 @@ class Tokenizer(object):
             text = text[1:-1]
         return text
 
-    def tokenize_files(self, files_path, data_path):
+    def tokenize_files(self, files_path, data_path) -> Dict:
         h5_path = os.path.join(data_path, 'dataset.h5')
         h5 = h5py.File(h5_path, 'a')
+        data_info = {
+            'length': []
+        }
         try:
             h5.create_dataset('x',
                               shape=(500, self.max_length),
@@ -189,13 +192,15 @@ class Tokenizer(object):
         current_index = 0
         for file in tqdm.tqdm(helper.get_all_files(files_path),
                               desc='processing files'):
-            x, y = self.process_by_file(file)
-            new_index = current_index + len(x)
+            x_padded, y_padded, x_list, y_list = self.process_by_file(file)
+            for item in x_list:
+                data_info['length'].append(len(item))
+            new_index = current_index + len(x_padded)
             if new_index > 500:
                 h5['x'].resize((new_index, self.max_length))
                 h5['y'].resize((new_index, self.max_length))
-            h5['x'][current_index:new_index] = x
-            h5['y'][current_index:new_index] = y
+            h5['x'][current_index:new_index] = x_padded
+            h5['y'][current_index:new_index] = y_padded
             current_index = new_index
 
         sample_index = random.randint(0, len(h5['x']))
@@ -205,6 +210,7 @@ class Tokenizer(object):
         print('sample y     : {}'.format(h5['y'][sample_index]))
         print('----------------------------------------')
         h5.close()
+        return data_info
 
     def process_by_file(self, file_path, min_lengh=8):
         lines = open(file_path, 'r', encoding='utf-8').read().splitlines()
@@ -219,7 +225,7 @@ class Tokenizer(object):
                     y_list.append(self.label_tokenize(y))
         x_padded = sequence.pad_sequences(x_list, maxlen=self.max_length, padding='post')
         y_padded = sequence.pad_sequences(y_list, maxlen=self.max_length, padding='post')
-        return x_padded, y_padded
+        return x_padded, y_padded, x_list, y_list
 
 
 def format_line(text):
