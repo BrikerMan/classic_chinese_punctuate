@@ -87,11 +87,11 @@ def h5f_generator(h5path: str,
         for i in range(0, len(indices), batch_size):
             batch_indices = indices[i:i+batch_size]
             batch_indices.sort()
-            by = db["x"][batch_indices, :]
-            bx = to_categorical(db["y"][batch_indices, :],
-                                num_classes=label_count,
-                                dtype=np.int)
-            yield (bx, by)
+            x = db["x"][batch_indices, :]
+            y = to_categorical(db["y"][batch_indices, :],
+                               num_classes=label_count,
+                               dtype=np.int)
+            yield (x, y)
 
 
 def predict_with_model(tokenizer,
