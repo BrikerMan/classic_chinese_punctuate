@@ -52,10 +52,10 @@ class Tokenizer(object):
 
     def class_weights(self):
         base_weight = {
-            helper.macros.PAD: 1,
-            helper.macros.NO_TAG: 70
+            helper.macros.PAD: 0.01,
+            helper.macros.NO_TAG: 0.7
         }
-        weights = [base_weight.get(i, 100) for i in self.labels2idx]
+        weights = [base_weight.get(i, 1) for i in self.labels2idx]
         return np.asarray(weights)
 
     def build(self,
